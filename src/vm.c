@@ -192,10 +192,9 @@ int main(void) {
 	reset();
 
 	// JSRR
-	instr = 0b0100000111000000;
+	instr = 0b0100000110000000;
 	ins(instr);
-	printf("r_pc=%d\n", regs[R_PC]);
-//	output_assert(regs[R_PC] == 7, "OP_JSRR ¡Ì");
+	output_assert(regs[R_PC] == 6, "OP_JSRR ¡Ì");
 	reset();
 
 	return EXIT_SUCCESS;
