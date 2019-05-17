@@ -73,6 +73,14 @@ void update_flags(uint16_t r) {
 	}
 }
 
+uint16_t mem_read(uint16_t address) {
+	return memory[address];
+}
+
+void mem_write(uint16_t address, uint16_t value) {
+	memory[address] = value;
+}
+
 void ins(uint16_t instr) {
 	uint16_t op = instr >> 12;
 	switch (op) {
@@ -99,6 +107,7 @@ void ins(uint16_t instr) {
 			uint16_t sr1 = instr & 0x7;
 			regs[dr] = regs[sr] & regs[sr1];
 		}
+		update_flags(regs[dr]);
 	}
 		break;
 	case OP_BR: {
@@ -126,6 +135,67 @@ void ins(uint16_t instr) {
 		}
 	}
 		break;
+	case OP_LD: {
+		uint16_t dr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+		uint16_t address = regs[R_PC] + pc_offset;
+		regs[dr] = mem_read(address);
+		update_flags(regs[dr]);
+	}
+		break;
+	case OP_LDI: {
+		uint16_t dr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+		uint16_t add = regs[R_PC] + pc_offset;
+		uint16_t add1 = mem_read(add);
+		regs[dr] = mem_read(add1);
+		update_flags(regs[dr]);
+	}
+		break;
+	case OP_LDR: {
+		uint16_t dr = (instr >> 9) & 0x7;
+		uint16_t base_r = (instr >> 6) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x3F, 6);
+		regs[dr] = mem_read(regs[base_r] + pc_offset);
+		update_flags(regs[dr]);
+	}
+		break;
+	case OP_LEA: {
+		uint16_t dr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+		regs[dr] = regs[R_PC] + pc_offset;
+		update_flags(regs[dr]);
+	}
+		break;
+	case OP_NOT: {
+		uint16_t dr = (instr >> 9) & 0x7;
+		uint16_t sr = (instr >> 6) & 0x7;
+		regs[dr] = ~regs[sr];
+		update_flags(regs[dr]);
+	}
+		break;
+	case OP_ST: {
+		uint16_t sr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+		uint16_t add = regs[R_PC] + pc_offset;
+		mem_write(add, regs[sr]);
+	}
+		break;
+	case OP_STI: {
+		uint16_t sr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
+		uint16_t add = regs[R_PC] + pc_offset;
+		uint16_t add1 = mem_read(add);
+		mem_write(add1, regs[sr]);
+	}
+		break;
+	case OP_STR: {
+		uint16_t sr = (instr >> 9) & 0x7;
+		uint16_t pc_offset = sign_extend(instr & 0x3F, 6);
+		uint16_t base_r = (instr >> 6) & 0x7;
+		mem_write(regs[base_r] + pc_offset, sr);
+	}
+		break;
 	default:
 		break;
 	}
@@ -147,55 +217,132 @@ void output_assert(int expression, const char *s) {
 }
 
 int main(void) {
+
 	uint16_t instr;
 	printf("¿ªÊ¼²âÊÔ£º\n");
-	regs[1] = 0;
-	regs[2] = 1;
-	regs[3] = 2;
-	instr = 0b0001001010000011;
-	ins(instr);
-	assert(regs[1] == 3);
-	reset();
+	{
+		regs[1] = 0;
+		regs[2] = 1;
+		regs[3] = 2;
+		instr = 0b0001001010000011;
+		ins(instr);
+		assert(regs[1] == 3);
+		reset();
+	}
 
-	instr = 0b0001001111101000;
-	regs[1] = 0;
-	regs[7] = 10;
-	ins(instr);
-	output_assert(regs[1] == 18, "OP_ADD ¡Ì");
-	reset();
+	{
+		instr = 0b0001001111101000;
+		regs[1] = 0;
+		regs[7] = 10;
+		ins(instr);
+		output_assert(regs[1] == 18, "OP_ADD ¡Ì");
+		reset();
+	}
 
-	instr = 0b0101000001000010;
-	ins(instr);
-	assert(regs[0] == 0);
-	reset();
-	instr = 0b0101001111100111;
-	ins(instr);
-	output_assert(regs[1] == 0x7, "OP_AND ¡Ì");
-	reset();
+	{
+		instr = 0b0101000001000010;
+		ins(instr);
+		assert(regs[0] == 0);
+		reset();
+		instr = 0b0101001111100111;
+		ins(instr);
+		output_assert(regs[1] == 0x7, "OP_AND ¡Ì");
+		reset();
+	}
 
-	regs[R_PC] = 10;
-	regs[R_COND] = 0b100;
-	instr = 0b0000100000000010;
-	ins(instr);
-	output_assert(regs[R_PC] == 12, "OP_BR ¡Ì");
-	reset();
+	{
+		regs[R_PC] = 10;
+		regs[R_COND] = 0b100;
+		instr = 0b0000100000000010;
+		ins(instr);
+		output_assert(regs[R_PC] == 12, "OP_BR ¡Ì");
+		reset();
+	}
 
-	instr = 0b1100000111000010;
-	ins(instr);
-	output_assert(regs[R_PC] == 7, "OP_JMP ¡Ì");
-	reset();
+	{
+		instr = 0b1100000111000010;
+		ins(instr);
+		output_assert(regs[R_PC] == 7, "OP_JMP ¡Ì");
+		reset();
+	}
 
-	// JSR
-	instr = 0b0100100000000100;
-	ins(instr);
-	output_assert(regs[R_PC] == 12, "OP_JSR ¡Ì");
-	reset();
+	{
+		// JSR
+		instr = 0b0100100000000100;
+		ins(instr);
+		output_assert(regs[R_PC] == 12, "OP_JSR ¡Ì");
+		reset();
+	}
 
-	// JSRR
-	instr = 0b0100000110000000;
-	ins(instr);
-	output_assert(regs[R_PC] == 6, "OP_JSRR ¡Ì");
-	reset();
+	{
+		// JSRR
+		instr = 0b0100000110000000;
+		ins(instr);
+		output_assert(regs[R_PC] == 6, "OP_JSRR ¡Ì");
+		reset();
+	}
 
+	{
+		// LD
+		instr = 0b0010111000000011;
+		regs[R_PC] = 1;
+		uint16_t add = regs[R_PC] + sign_extend(3, 9);
+		memory[add] = 10;
+		ins(instr);
+		output_assert(regs[7] == 10, "OP_LD ¡Ì");
+		reset();
+	}
+
+	{
+		// LDI
+		instr = 0b1010111000000010;
+		regs[R_PC] = 1;
+		uint16_t add = regs[R_PC] + sign_extend(2, 9);
+		mem_write(add, 10);
+		uint16_t add1 = mem_read(add);
+		mem_write(add1, 100);
+		ins(instr);
+		output_assert(regs[7] == 100, "OP_LDI ¡Ì");
+		reset();
+	}
+
+	{
+		// LEA
+		instr = 0b1110111000000010;
+		regs[R_PC] = 10;
+		ins(instr);
+		output_assert(regs[7] == 12, "OP_LEA ¡Ì");
+		reset();
+	}
+
+	{
+		// NOT
+		instr = 0b1001111000111111;
+		regs[0] = 0b1111111111111111;
+		ins(instr);
+		output_assert(regs[7] == 0, "OP_NOT ¡Ì");
+		reset();
+	}
+
+	{
+		// ST
+		instr = 0b0011111000000001;
+		regs[7] = 7;
+		regs[R_PC] = 1;
+		uint16_t add = regs[R_PC] + sign_extend(1, 9);
+		ins(instr);
+		output_assert(regs[7] == mem_read(add), "OP_ST ¡Ì");
+		reset();
+	}
+
+	{
+		// STR
+		instr = 0b0111111000000001;
+		regs[7] = 7;
+		uint16_t add = 0 + sign_extend(1, 6);
+		ins(instr);
+		output_assert(regs[7] == mem_read(add), "OP_STR ¡Ì");
+		reset();
+	}
 	return EXIT_SUCCESS;
 }
