@@ -128,7 +128,7 @@ void ins(uint16_t instr) {
 			uint16_t sr1 = instr & 0x7;
 			regs[dr] = regs[sr] + regs[sr1];
 		}
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_AND: {
@@ -141,7 +141,7 @@ void ins(uint16_t instr) {
 			uint16_t sr1 = instr & 0x7;
 			regs[dr] = regs[sr] & regs[sr1];
 		}
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_BR: {
@@ -174,7 +174,7 @@ void ins(uint16_t instr) {
 		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
 		uint16_t address = regs[R_PC] + pc_offset;
 		regs[dr] = mem_read(address);
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_LDI: {
@@ -183,7 +183,7 @@ void ins(uint16_t instr) {
 		uint16_t add = regs[R_PC] + pc_offset;
 		uint16_t add1 = mem_read(add);
 		regs[dr] = mem_read(add1);
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_LDR: {
@@ -191,21 +191,21 @@ void ins(uint16_t instr) {
 		uint16_t base_r = (instr >> 6) & 0x7;
 		uint16_t pc_offset = sign_extend(instr & 0x3F, 6);
 		regs[dr] = mem_read(regs[base_r] + pc_offset);
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_LEA: {
 		uint16_t dr = (instr >> 9) & 0x7;
 		uint16_t pc_offset = sign_extend(instr & 0x1FF, 9);
 		regs[dr] = regs[R_PC] + pc_offset;
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_NOT: {
 		uint16_t dr = (instr >> 9) & 0x7;
 		uint16_t sr = (instr >> 6) & 0x7;
 		regs[dr] = ~regs[sr];
-		update_flags(regs[dr]);
+		update_flags(dr);
 	}
 		break;
 	case OP_ST: {
@@ -227,7 +227,7 @@ void ins(uint16_t instr) {
 		uint16_t sr = (instr >> 9) & 0x7;
 		uint16_t pc_offset = sign_extend(instr & 0x3F, 6);
 		uint16_t base_r = (instr >> 6) & 0x7;
-		mem_write(regs[base_r] + pc_offset, sr);
+		mem_write(regs[base_r] + pc_offset, regs[sr]);
 	}
 		break;
 	case OP_TRAP: {
